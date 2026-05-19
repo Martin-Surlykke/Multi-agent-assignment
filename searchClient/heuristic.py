@@ -47,36 +47,33 @@ class Heuristic(ABC):
                             queue.append((n_row, n_col, new_dist))
 
     def h(self, state: State) -> int:
-        total_distance = 0
-        rows = len(State.walls)
-        cols = len(State.walls[0]) if rows > 0 else 0
-
-        w_box_to_goal = 5
-        w_agent_to_box = 1
-
-        for r in range(rows):
-            for c in range(cols):
+        total_box_distance = 0
+        min_distance_to_any_unsolved_box = 10000000
+        
+        for r in range(len(state.boxes)):
+            for c in range(len(state.boxes[r])):
                 box = state.boxes[r][c]
-
+                
                 if "A" <= box <= "Z":
                     box_id = ord(box) - ord("A")
+                    dist_to_goal = self.box_heat_map[box_id][r][c]
+                    
 
-                    if self.box_in_level[box_id]:
-                        dist_to_goal = self.box_heat_map[box_id][r][c]
+                    if 0 < dist_to_goal < 10000000:
+                        total_box_distance += dist_to_goal
+                        
 
-                        if dist_to_goal < 10000000:
-                            total_distance += dist_to_goal * w_box_to_goal
+                        for a in range(len(state.agent_rows)):
+                            if State.agent_colors[a] == State.box_colors[box_id]:
+                                dist_to_agent = max(0, abs(state.agent_rows[a] - r) + abs(state.agent_cols[a] - c) - 1) 
+                                if dist_to_agent < min_distance_to_any_unsolved_box:
+                                    min_distance_to_any_unsolved_box = dist_to_agent
 
-                            min_agent_dist = 10000000
-                            for a in range(len(state.agent_rows)):
-                                if State.agent_colors[a] == State.box_colors[box_id]:
-                                    dist_to_agent = abs(state.agent_rows[a] - r) + abs(state.agent_cols[a] - c)
-                                    if dist_to_agent < min_agent_dist:
-                                        min_agent_dist = dist_to_agent
 
-                            total_distance += min_agent_dist * w_agent_to_box
-
-        return total_distance
+        if min_distance_to_any_unsolved_box == 10000000:
+            return 0
+            
+        return total_box_distance + min_distance_to_any_unsolved_box
 
     @abstractmethod
     def f(self, state: State) -> int: ...

@@ -124,30 +124,35 @@ class SearchClient:
         initial_state = SearchClient.parse_level(server_messages)
 
         # Select search strategy.
-        frontier: Frontier
-        if args.bfs:
-            frontier = FrontierBFS()
-        elif args.dfs:
-            frontier = FrontierDFS()
-        elif args.astar:
-            frontier = FrontierBestFirst(HeuristicAStar(initial_state))
-        elif args.wastar is not False:
-            frontier = FrontierBestFirst(HeuristicWeightedAStar(initial_state, args.wastar))
-        elif args.greedy:
-            frontier = FrontierBestFirst(HeuristicGreedy(initial_state))
+        plan = None 
+        if args.cbs: 
+            from searchclient.cbs import cbs_search 
+            plan = cbs_search(initial_state) 
         else:
+            frontier: Frontier
+            if args.bfs:
+                frontier = FrontierBFS()
+            elif args.dfs:
+               frontier = FrontierDFS()
+            elif args.astar:
+               frontier = FrontierBestFirst(HeuristicAStar(initial_state))
+            elif args.wastar is not False:
+               frontier = FrontierBestFirst(HeuristicWeightedAStar(initial_state, args.wastar))
+            elif args.greedy:
+               frontier = FrontierBestFirst(HeuristicGreedy(initial_state))
+            else:
             # Default to BFS search.
-            frontier = FrontierBFS()
-            print(
-                "Defaulting to BFS search. Use arguments -bfs, -dfs, -astar, -wastar, or -greedy to set the search"
-                " strategy.",
-                file=sys.stderr,
-                flush=True,
-            )
+                frontier = FrontierBFS()
+                print(
+                   "Defaulting to BFS search. Use arguments -bfs, -dfs, -astar, -wastar, or -greedy to set the search"
+                   " strategy.",
+                   file=sys.stderr,
+                   flush=True,
+                )
 
-        # Search for a plan.
-        print(f"Starting {frontier.get_name()}.", file=sys.stderr, flush=True)
-        plan = search(initial_state, frontier)
+            # Search for a plan.
+            print(f"Starting {frontier.get_name()}.", file=sys.stderr, flush=True)
+            plan = search(initial_state, frontier)
 
         # Print plan to server.
         if plan is None:
@@ -158,7 +163,7 @@ class SearchClient:
 
             for joint_action in plan:
                 print("|".join(a.name_ + "@" + a.name_ for a in joint_action), flush=True)
-                # We must read the server's response to not fill up the stdin buffer and block the server.
+                    # We must read the server's response to not fill up the stdin buffer and block the server.
                 _response = server_messages.readline()
 
 
@@ -169,7 +174,7 @@ if __name__ == "__main__":
         "--max-memory",
         metavar="<MB>",
         type=float,
-        default=2048.0,
+        default=8192.0,
         help="The maximum memory usage allowed in MB (soft limit, default 2048).",
     )
 
@@ -188,6 +193,9 @@ if __name__ == "__main__":
         help="Use the WA* strategy.",
     )
     strategy_group.add_argument("-greedy", action="store_true", dest="greedy", help="Use the Greedy strategy.")
+    # add a new strategy "CBS" to be used by as an argument 
+    strategy_group.add_argument("-cbs", action="store_true", dest="cbs", help="Use Conflict-Based Search.")
+
 
     args = parser.parse_args()
 
